@@ -1,10 +1,18 @@
 import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller";
+import { upload } from "../middlewares/upload-profile";
 
 const router: Router = Router();
 const authController = new AuthController();
 
 router.post('/register', authController.registerUser);
-router.post('/login',authController.loginUser)
+router.post('/login',authController.loginUser);
+router.put('/update/:id',authController.updateUser);
+// router.post("/:id/profile-picture", authController.uploadProfilePicture);
+router.post(
+  "/:id/profile-picture",
+  upload.single("profileImage"), // ← Multer middleware
+  authController.uploadProfilePicture
+);
 
 export default router;

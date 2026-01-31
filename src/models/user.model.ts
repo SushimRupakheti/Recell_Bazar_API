@@ -10,7 +10,7 @@ const userSchema: Schema = new Schema(
             address:{type:String,required:true},
             password:{type:String},
             role: { type: String, enum: ["admin", "user"], default: "user" },
-
+            profileImage: { type: String,default: null},
     },
     {
         timestamps:true, //autocreatedAt and updatedAt

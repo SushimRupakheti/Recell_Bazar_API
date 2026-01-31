@@ -4,6 +4,9 @@ import bycryptjs from "bcryptjs"
 import { HttpError } from "../errors/http-error";
 import { JWT_SECRET } from "../config";
 import  jwt  from "jsonwebtoken";
+import { IUser } from "../models/user.model";
+import { UserModel } from "../models/user.model";
+
 
 let userRepository =new UserRepository();
 
@@ -42,5 +45,27 @@ async LoginUser(data:LoginUserDto){
     const token = jwt.sign(payload,JWT_SECRET,{expiresIn:'30d'});
     return {token,user}
 } 
+
+async updateUser(userId:string, data:Partial<createUserDto>){
+    const updatedUser = await userRepository.updateUserById(userId,data);   
+    if(!updatedUser){
+        throw new HttpError(404,"User not found");
+    }
+    return updatedUser;
 }
- 
+
+
+async updateProfileImage(userId: string, imagePath: string) {
+  const user = await UserModel.findByIdAndUpdate(
+    userId,
+    { profileImage: imagePath },
+    { new: true }
+  );
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return user;
+}
+}

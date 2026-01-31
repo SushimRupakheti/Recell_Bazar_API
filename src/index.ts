@@ -6,6 +6,8 @@ import { PORT } from './config';
 
 import authRoutes from './routes/auth.route';
 import adminUserRoute from './routes/admin/user.route';
+import itemRoutes from './routes/item.route';
+
 
 // dotenv.config();
 
@@ -14,6 +16,8 @@ const app: Application = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
+app.use("/api/users", authRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello, World!');
@@ -22,13 +26,16 @@ app.get('/', (req: Request, res: Response) => {
  
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminUserRoute);
+app.use("/uploads", express.static("uploads"));
+
+app.use("/api/items", itemRoutes);
 
 
 
 async function startServer() {
     await connectDB();
     app.listen(
-    PORT, 
+    PORT,
     () => {
         console.log(`Server on http://localhost:${PORT}`);
     }
