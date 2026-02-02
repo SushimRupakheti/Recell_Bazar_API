@@ -29,7 +29,9 @@ app.use('/api/admin/users', adminUserRoute);
 app.use("/uploads", express.static("uploads"));
 
 app.use("/api/items", itemRoutes);
+import path from "path";
 
+app.use("/uploads", express.static(path.join(__dirname, "../itemPhotoUploads")));
 
 
 async function startServer() {

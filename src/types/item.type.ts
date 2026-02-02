@@ -4,7 +4,7 @@ export type ItemType = {
   photos: string[];
 
   category: string;
-  itemModel: string;
+  phoneModel: string;
 
   finalPrice: string;
   basePrice: string;
@@ -12,8 +12,6 @@ export type ItemType = {
   year: number;
   batteryHealth: number;
   description: string;
-
-  deviceCondition: string;
   chargerAvailable: boolean;
 
   factoryUnlock: boolean;

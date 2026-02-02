@@ -69,6 +69,19 @@ export class AuthController{
     } 
   }
 
+  async getUserById(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const user = await authservice.getUserById(userId);
+      return res.status(200).json({ success: true, data: user });
+    } catch (error: any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  }
+
   
 async uploadProfilePicture(req: Request, res: Response) {
   try {

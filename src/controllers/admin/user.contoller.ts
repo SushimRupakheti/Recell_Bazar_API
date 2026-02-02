@@ -2,6 +2,10 @@ import {createUserDto} from "../../dtos/auth.dto"
 import z from "zod";
 import {Request,Response} from "express";
 import { AuthService } from "../../services/auth.services";
+import mongoose from "mongoose";
+import { UserModel } from "../../models/user.model"; 
+
+
 
 let authservice= new AuthService();
 
@@ -26,5 +30,130 @@ export class AdminUserController{
             )
         }
 
+    }
+    //  GET ALL USERS (Admin)
+    async getAllUsers(req: Request, res: Response) {
+        try {
+            const users = await UserModel.find().select("-password");
+
+            return res.status(200).json({
+                success: true,
+                message: "All users fetched successfully",
+                data: users,
+            });
+
+        } catch (error: any) {
+            return res.status(500).json({
+                success: false,
+                message: "Error fetching users",
+            });
+        }
+    }
+
+    //  GET USER BY ID (Admin)
+    async getUserById(req: Request, res: Response) {
+        try {
+            const { userid } = req.params;
+
+            const user = await UserModel.findById(userid).select("-password");
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "User fetched successfully",
+                data: user,
+            });
+
+        } catch (error: any) {
+            return res.status(500).json({
+                success: false,
+                message: "Error fetching user",
+            });
+        }
+    }
+    async updateUser(req: Request, res: Response) {
+        try {
+            const { userid } = req.params;
+
+            //  Validate ObjectId
+            if (!mongoose.Types.ObjectId.isValid(userid)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid user ID format",
+                });
+            }
+
+            //  Update user
+            const updatedUser = await UserModel.findByIdAndUpdate(
+                userid,
+                req.body,
+                { new: true } // return updated document
+            ).select("-password");
+
+            //  If user not found
+            if (!updatedUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "User updated successfully",
+                data: updatedUser,
+            });
+
+        } catch (error: any) {
+            console.log("UPDATE USER ERROR:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: error.message || "Internal Server Error",
+            });
+        }
+    }
+    async deleteUser(req: Request, res: Response) {
+        try {
+            const { userid } = req.params;
+
+            //  Validate ObjectId
+            if (!mongoose.Types.ObjectId.isValid(userid)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid user ID format",
+                });
+            }
+
+            //  Delete user
+            const deletedUser = await UserModel.findByIdAndDelete(userid);
+
+            //  If user not found
+            if (!deletedUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "User deleted successfully",
+            });
+
+        } catch (error: any) {
+            console.log("DELETE USER ERROR:", error);
+
+            return res.status(500).json({
+                success: false,
+                message: error.message || "Internal Server Error",
+            });
+        }
     }
 }

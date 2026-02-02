@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { ItemType } from "../types/item_type"; 
+import { ItemType } from "../types/item.type"; 
 
 const itemSchema: Schema = new Schema(
   {
@@ -48,12 +48,7 @@ const itemSchema: Schema = new Schema(
       type: String,
       required: true,
     },
-
-    deviceCondition: {
-      type: String,
-      required: true,
-    },
-
+    
     chargerAvailable: {
       type: Boolean,
       default: true,

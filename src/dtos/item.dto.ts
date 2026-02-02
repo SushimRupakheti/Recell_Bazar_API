@@ -2,7 +2,7 @@ export interface CreateItemDTO {
   photos: string[];
 
   category: string;
-  model: string;
+  phoneModel: string;
 
   finalPrice: string;
   basePrice: string;
@@ -10,8 +10,6 @@ export interface CreateItemDTO {
   year: number;
   batteryHealth: number;
   description: string;
-
-  deviceCondition: string;
   chargerAvailable: boolean;
 
   factoryUnlock: boolean;

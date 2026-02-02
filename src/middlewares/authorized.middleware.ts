@@ -58,7 +58,7 @@ export async function authorizedMiddleWare(req: Request, res: Response, next: Ne
 
 }
 
-export async function adminMiddelware(req: Request, res: Response, next: NextFunction) {
+export async function adminMiddleware(req: Request, res: Response, next: NextFunction) {
     try{
         // req.user is set in authorizedMiddelWare
         // only use role/admin middleware after user is authorized

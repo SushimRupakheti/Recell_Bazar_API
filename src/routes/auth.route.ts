@@ -8,6 +8,7 @@ const authController = new AuthController();
 router.post('/register', authController.registerUser);
 router.post('/login',authController.loginUser);
 router.put('/update/:id',authController.updateUser);
+router.get('/:id', authController.getUserById);
 // router.post("/:id/profile-picture", authController.uploadProfilePicture);
 router.post(
   "/:id/profile-picture",
