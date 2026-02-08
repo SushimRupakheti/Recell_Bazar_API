@@ -65,4 +65,37 @@ export class ItemController {
       });
     }
   }
+
+  async getItemsByUserId(req: Request, res: Response) {
+    try {
+      const userId = req.params.userId;
+
+      const items = await this.itemService.getItemsByUserId(userId);
+
+      return res.status(200).json({ success: true, items });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({
+        success: false,
+        message: err.message || "Failed to fetch user's items",
+      });
+    }
+  }
+
+  async updateItem(req: Request, res: Response) {
+    try {
+      if (!req.user) throw new HttpError(401, "Unauthorized, User Not Found");
+
+      const itemId = req.params.id;
+      const userId = req.user._id.toString();
+
+      const updatedItem = await this.itemService.updateItem(itemId, userId, req.body);
+
+      return res.status(200).json({ success: true, item: updatedItem });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({
+        success: false,
+        message: err.message || "Failed to update item",
+      });
+    }
+  }
 }

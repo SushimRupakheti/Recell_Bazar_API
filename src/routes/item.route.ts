@@ -70,6 +70,16 @@ router.post(
 
 // Public GET routes
 router.get("/", (req, res) => itemController.getAllItems(req, res));
+// GET items by userId (e.g. /items/user/:userId)
+router.get("/user/:userId", (req, res) =>
+  itemController.getItemsByUserId(req, res)
+);
+
+// Update item (Protected, owner-only enforced in controller/service)
+router.put("/:id", authorizedMiddleWare, (req, res) =>
+  itemController.updateItem(req, res)
+);
+
 router.get("/:id", (req, res) => itemController.getItemById(req, res));
 
 export default router;
