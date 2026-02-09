@@ -118,4 +118,12 @@ async getUserById(userId: string) {
         }
     }
 
+
+
+    async logout(token?: string) {
+        // Stateless JWTs don't require server-side logout by default.
+        // This stub exists to allow future token revocation/blacklisting.
+        // If you store refresh tokens or maintain a blacklist, add logic here.
+        return { success: true, message: "Logged out" };
+    }
 }
