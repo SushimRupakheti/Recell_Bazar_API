@@ -7,8 +7,10 @@ import { PORT } from './config';
 import authRoutes from './routes/auth.route';
 import adminUserRoute from './routes/admin/user.route';
 import itemRoutes from './routes/item.route';
+import paymentRoutes from './routes/payment.route';
 
 import cors from "cors";
+import path from "path";
 
 
 
@@ -41,7 +43,8 @@ app.use('/api/admin/users', adminUserRoute);
 app.use("/uploads", express.static("uploads"));
 
 app.use("/api/items", itemRoutes);
-import path from "path";
+app.use("/api/payments", paymentRoutes);
+
 
 app.use("/uploads", express.static(path.join(__dirname, "../itemPhotoUploads")));
 
