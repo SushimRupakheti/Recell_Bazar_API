@@ -34,12 +34,31 @@ export class AdminUserController{
     //  GET ALL USERS (Admin)
     async getAllUsers(req: Request, res: Response) {
         try {
-            const users = await UserModel.find().select("-password");
+            const page = Math.max(parseInt((req.query.page as string) || "1", 10), 1);
+            const limit = 10; // fixed 10 users per page
+            const skip = (page - 1) * limit;
+
+            const [users, total] = await Promise.all([
+                UserModel.find()
+                    .select("-password")
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limit),
+                UserModel.countDocuments(),
+            ]);
+
+            const totalPages = Math.ceil(total / limit) || 1;
 
             return res.status(200).json({
                 success: true,
-                message: "All users fetched successfully",
+                message: "Users fetched successfully",
                 data: users,
+                meta: {
+                    total,
+                    totalPages,
+                    currentPage: page,
+                    perPage: limit,
+                },
             });
 
         } catch (error: any) {
