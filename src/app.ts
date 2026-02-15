@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.route';
 import adminUserRoute from './routes/admin/user.route';
 import itemRoutes from './routes/item.route';
 import paymentRoutes from './routes/payment.route';
+import paymentController from './controllers/payment.controller';
 
 import cors from "cors";
 import path from "path";
@@ -24,6 +25,13 @@ app.use(
     origin: "http://localhost:3000",
     credentials: true,
   })
+);
+
+// Stripe webhook needs raw body for signature verification — register before JSON parser
+app.post(
+  '/api/payments/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  (req: Request, res: Response) => paymentController.handleStripeWebhook(req, res)
 );
 
 app.use(express.json());
