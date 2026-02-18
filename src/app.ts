@@ -6,6 +6,7 @@ import { PORT } from './config';
 
 import authRoutes from './routes/auth.route';
 import adminUserRoute from './routes/admin/user.route';
+import adminItemRoute from './routes/admin/item.route';
 import itemRoutes from './routes/item.route';
 import paymentRoutes from './routes/payment.route';
 import paymentController from './controllers/payment.controller';
@@ -48,6 +49,7 @@ app.get('/', (req: Request, res: Response) => {
  
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminUserRoute);
+app.use('/api/admin/items', adminItemRoute);
 app.use("/uploads", express.static("uploads"));
 
 app.use("/api/items", itemRoutes);
