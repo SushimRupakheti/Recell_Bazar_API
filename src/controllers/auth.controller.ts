@@ -58,16 +58,8 @@ export class AuthController {
 
   async logoutUser(req: Request, res: Response) {
     try {
-      // Try to get token from Authorization header or cookies (if used)
-      const authHeader = req.headers.authorization as string | undefined;
-      const tokenFromHeader = authHeader && authHeader.startsWith("Bearer ")
-        ? authHeader.split(" ")[1]
-        : undefined;
-      // @ts-ignore - cookies may not be present if cookie-parser isn't used
-      const tokenFromCookie = (req as any).cookies?.token;
-      const token = tokenFromHeader || tokenFromCookie;
-
-      await authservice.logout(token);
+      // Allow logout without a token: call logout unconditionally
+      await authservice.logout();
 
       // Clear cookie if present (no-op if cookies not configured)
       try { res.clearCookie("token"); } catch (e) {}

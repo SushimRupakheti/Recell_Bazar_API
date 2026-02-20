@@ -8,6 +8,7 @@ const router: Router = Router();
 const adminUserController = new AdminUserController();
 
 router.post('/register',authorizedMiddleWare, adminUserController.createUser);
+router.post('/logout', adminUserController.logoutUser);
 
 router.get(
     '/test',

@@ -31,6 +31,24 @@ export class AdminUserController{
         }
 
     }
+
+    // ADMIN LOGOUT
+    async logoutUser(req: Request, res: Response) {
+        try {
+            // Allow admin logout without requiring a bearer token
+            await authservice.logout();
+
+            // Clear cookie if present
+            try { res.clearCookie("token"); } catch (e) {}
+
+            return res.status(200).json({ success: true, message: "Logout successful" });
+        } catch (error: any) {
+            return res.status(error.statusCode || 500).json({
+                success: false,
+                message: error.message || "Internal Server Error",
+            });
+        }
+    }
     //  GET ALL USERS (Admin)
     async getAllUsers(req: Request, res: Response) {
         try {

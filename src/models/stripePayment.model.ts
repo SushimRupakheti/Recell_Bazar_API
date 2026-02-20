@@ -19,7 +19,7 @@ export interface IStripePayment extends Document {
 
 const StripePaymentSchema: Schema = new Schema(
   {
-    sessionId: { type: String, required: true, index: true, unique: true },
+    sessionId: { type: String, index: true, sparse: true },
     paymentIntentId: { type: String },
     amount: { type: Number, required: true },
     currency: { type: String, required: true },
