@@ -11,9 +11,24 @@ const stripePublishable =
   process.env.STRIPE_PUBLISHABLE_KEY ||
   "";
 
+// Payment logging control: set `PAYMENT_SILENT=true` in env to suppress
+// all console output from payment-related code (webhooks, controllers).
+const PAYMENT_SILENT = process.env.PAYMENT_SILENT === "true";
+const paymentConsole = {
+  log: (...args: any[]) => {
+    if (!PAYMENT_SILENT) console.log(...args);
+  },
+  warn: (...args: any[]) => {
+    if (!PAYMENT_SILENT) console.warn(...args);
+  },
+  error: (...args: any[]) => {
+    if (!PAYMENT_SILENT) console.error(...args);
+  },
+};
+
 if (!stripeSecret || !stripeSecret.startsWith("sk_")) {
   // Dev-time friendly error — ensures we catch misconfiguration early.
-  console.error("Invalid STRIPE_SECRET_KEY. It must be the secret key (sk_...)");
+  paymentConsole.error("Invalid STRIPE_SECRET_KEY. It must be the secret key (sk_...)");
   // Note: we don't throw here so the server can still start in some setups;
   // the handler below will return a 500 with a clear message when called.
 }
@@ -24,7 +39,7 @@ export class PaymentController {
   async createStripeCheckout(req: Request, res: Response) {
     // Early guard: return a clear error if secret key is missing/invalid
     if (!stripeSecret || !stripeSecret.startsWith("sk_")) {
-      console.error("Stripe secret key missing or invalid on createStripeCheckout.");
+    paymentConsole.error("Stripe secret key missing or invalid on createStripeCheckout.");
       return res.status(500).json({
         error: "Server misconfigured: STRIPE_SECRET_KEY must be set to Stripe secret key (sk_...).",
       });
@@ -145,7 +160,7 @@ export class PaymentController {
 
       return res.status(200).json({ sessionId: session.id, url: session.url });
     } catch (error: any) {
-      console.error("Stripe checkout error:", error);
+      paymentConsole.error("Stripe checkout error:", error);
       return res
         .status(500)
         .json({ error: error.message || "Failed to create checkout session" });
@@ -163,15 +178,15 @@ export class PaymentController {
       // Diagnostic logs to help debug webhook receipts and body parsing issues
       try {
         const bodyType = Buffer.isBuffer(rawBody) ? 'Buffer' : typeof rawBody;
-        console.log(`Stripe webhook received. signature present=${Boolean(sig)}, webhookSecretConfigured=${Boolean(webhookSecret)}, bodyType=${bodyType}`);
-        if (Buffer.isBuffer(rawBody)) console.log(`Raw body length=${rawBody.length}`);
+        paymentConsole.log(`Stripe webhook received. signature present=${Boolean(sig)}, webhookSecretConfigured=${Boolean(webhookSecret)}, bodyType=${bodyType}`);
+        if (Buffer.isBuffer(rawBody)) paymentConsole.log(`Raw body length=${rawBody.length}`);
       } catch (_) {}
       // If webhook secret is not configured, allow a test-mode where the
       // incoming JSON payload is used directly (useful for local testing).
       if (!webhookSecret) {
         try {
           const parsed = JSON.parse(rawBody.toString());
-          console.warn(
+          paymentConsole.warn(
             "STRIPE_WEBHOOK_SECRET not set — processing webhook without signature verification (TEST MODE)."
           );
           event = parsed as Stripe.Event;
@@ -183,18 +198,54 @@ export class PaymentController {
         event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
       }
     } catch (err: any) {
-      console.error("Webhook signature verification failed:", err.message);
+      paymentConsole.error("Webhook signature verification failed:", err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     // Handle events
     try {
       // Log event type early for visibility
-      try { console.log(`Stripe event parsed: type=${event.type}`); } catch (_) {}
+      try { paymentConsole.log(`Stripe event parsed: type=${event.type}`); } catch (_) {}
+
+      // Helper to resolve best-effort email from Stripe objects (payment intent / session / charge)
+      const resolveEmail = async (obj: any): Promise<string | null> => {
+        if (!obj) return null;
+        try {
+          // charges.data[0].billing_details.email
+          const byCharge = obj.charges?.data?.[0]?.billing_details?.email;
+          if (byCharge) return byCharge;
+
+          // receipt_email on PaymentIntent
+          if (obj.receipt_email) return obj.receipt_email;
+
+          // session.customer_email (for checkout session)
+          if (obj.customer_email) return obj.customer_email;
+
+          // metadata email
+          if (obj.metadata && obj.metadata.email) return obj.metadata.email;
+
+          // customer lookup if customer id/object present
+          const cust = obj.customer;
+          let custId: string | undefined;
+          if (cust) {
+            if (typeof cust === 'string') custId = cust;
+            else if (typeof cust === 'object' && cust.id) custId = cust.id;
+          }
+          if (custId) {
+            try {
+              const customer = (await stripe.customers.retrieve(custId)) as any;
+              if (customer && customer.email) return customer.email;
+            } catch (_) {
+              // ignore lookup errors
+            }
+          }
+        } catch (_) {}
+        return null;
+      };
       switch (event.type) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
-          console.log("Checkout session completed:", session.id);
+          paymentConsole.log("Checkout session completed:", session.id);
           // Use your existing persistence code here (same as before)
           // (Persist Stripe session to StripePaymentModel + PaymentModel)
           try {
@@ -217,20 +268,22 @@ export class PaymentController {
                     try {
                       await ItemModel.updateOne({ _id: productId }, { $set: { isSold: true } });
                     } catch (markErr: any) {
-                      console.error("Failed to mark item as sold:", markErr);
+                      paymentConsole.error("Failed to mark item as sold:", markErr);
                     }
                   }
                 } catch (itmErr: any) {
-                  console.error("Failed to load item for payment snapshot:", itmErr);
+                  paymentConsole.error("Failed to load item for payment snapshot:", itmErr);
                 }
               }
+
+              const resolvedEmail = await resolveEmail(session);
 
               const created = await StripePaymentModel.create({
                 sessionId: session.id,
                 paymentIntentId: (session.payment_intent as string) || undefined,
                 amount: session.amount_total ? Number(session.amount_total) / 100 : 0,
                 currency: session.currency || "usd",
-                customerEmail: session.customer_email || "",
+                customerEmail: resolvedEmail || session.customer_email || "",
                 metadata: meta,
                 productId,
                 orderId,
@@ -241,7 +294,7 @@ export class PaymentController {
                 raw: session,
               });
 
-              console.log("Saved StripePaymentModel (session):", created._id?.toString ? created._id.toString() : created._id);
+              paymentConsole.log("Saved StripePaymentModel (session):", created._id?.toString ? created._id.toString() : created._id);
 
               // Also create legacy eSewa-like PaymentModel entry if metadata contains required fields
               try {
@@ -254,7 +307,7 @@ export class PaymentController {
                       meta.fullName || meta.buyerName || buyerName || "",
                     phoneNo:
                       meta.phoneNo || meta.buyerPhone || buyerPhone || "",
-                    email: session.customer_email || meta.email || "",
+                    email: resolvedEmail || session.customer_email || meta.email || "",
                     phoneModel: meta.phoneModel || "",
                     sellerId: meta.sellerId || "",
                     price:
@@ -275,18 +328,18 @@ export class PaymentController {
                   await PaymentModel.create(paymentDoc as any);
                 }
               } catch (pmErr: any) {
-                console.error("Failed to create PaymentModel record:", pmErr);
+                paymentConsole.error("Failed to create PaymentModel record:", pmErr);
               }
             }
           } catch (dbErr: any) {
-            console.error("Failed to persist Stripe session:", dbErr);
+            paymentConsole.error("Failed to persist Stripe session:", dbErr);
           }
           break;
         }
 
         case "payment_intent.succeeded": {
           const pi = event.data.object as Stripe.PaymentIntent;
-          console.log("PaymentIntent succeeded:", pi.id);
+          paymentConsole.log("PaymentIntent succeeded:", pi.id);
           try {
             const existing = await StripePaymentModel.findOne({ paymentIntentId: pi.id });
             if (!existing) {
@@ -307,20 +360,23 @@ export class PaymentController {
                     try {
                       await ItemModel.updateOne({ _id: productId }, { $set: { isSold: true } });
                     } catch (markErr: any) {
-                      console.error("Failed to mark item as sold:", markErr);
+                      paymentConsole.error("Failed to mark item as sold:", markErr);
                     }
                   }
                 } catch (itmErr: any) {
-                  console.error("Failed to load item for payment snapshot:", itmErr);
+                  paymentConsole.error("Failed to load item for payment snapshot:", itmErr);
                 }
               }
 
-              const created = await StripePaymentModel.create({
-                sessionId: undefined,
+              // Use an idempotent upsert to avoid duplicate inserts and avoid
+              // writing an explicit `sessionId: null` value which can conflict
+              // with older unique/non-sparse indexes in the database.
+              const resolvedEmail = await resolveEmail(pi);
+              const upsertDoc: any = {
                 paymentIntentId: pi.id,
                 amount: pi.amount ? Number(pi.amount) / 100 : 0,
                 currency: pi.currency || "usd",
-                customerEmail: pi.receipt_email || "",
+                customerEmail: resolvedEmail || (pi.receipt_email as string) || "",
                 metadata: meta,
                 productId,
                 orderId,
@@ -329,9 +385,18 @@ export class PaymentController {
                 itemSnapshot,
                 status: "completed",
                 raw: pi,
-              });
+              };
 
-              console.log("Saved StripePaymentModel (payment_intent):", created._id?.toString ? created._id.toString() : created._id);
+              const created = await StripePaymentModel.findOneAndUpdate(
+                { paymentIntentId: pi.id },
+                { $set: upsertDoc },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+              );
+
+              paymentConsole.log(
+                "Saved StripePaymentModel (payment_intent):",
+                created?._id?.toString ? created._id.toString() : created?._id
+              );
 
               // Also create legacy PaymentModel entry if needed
               try {
@@ -340,24 +405,18 @@ export class PaymentController {
                 });
                 if (!paymentExists) {
                   const paymentDoc = {
-                    fullName:
-                      meta.fullName || meta.buyerName || buyerName || "",
-                    phoneNo:
-                      meta.phoneNo || meta.buyerPhone || buyerPhone || "",
-                    email: pi.receipt_email || meta.email || "",
+                    fullName: meta.fullName || meta.buyerName || buyerName || "",
+                    phoneNo: meta.phoneNo || meta.buyerPhone || buyerPhone || "",
+                    email: resolvedEmail || (meta.email as string) || "",
                     phoneModel: meta.phoneModel || "",
                     sellerId: meta.sellerId || "",
-                    price:
-                      Number(meta.price) ||
-                      (pi.amount ? Number(pi.amount) / 100 : 0),
+                    price: Number(meta.price) || (pi.amount ? Number(pi.amount) / 100 : 0),
                     location: meta.location || "",
                     date: meta.date || new Date().toISOString().split("T")[0],
                     time: meta.time || new Date().toLocaleTimeString(),
                     oid: meta.oid || orderId || pi.id,
                     refId: meta.refId || orderId || pi.id,
-                    amt:
-                      String(meta.amt) ||
-                      (pi.amount ? String(pi.amount) : "0"),
+                    amt: String(meta.amt) || (pi.amount ? String(pi.amount) : "0"),
                     status: "Success",
                     raw: JSON.stringify(pi),
                   };
@@ -365,22 +424,22 @@ export class PaymentController {
                   await PaymentModel.create(paymentDoc as any);
                 }
               } catch (pmErr: any) {
-                console.error("Failed to create PaymentModel record:", pmErr);
+                paymentConsole.error("Failed to create PaymentModel record:", pmErr);
               }
             }
           } catch (dbErr: any) {
-            console.error("Failed to persist PaymentIntent:", dbErr);
+            paymentConsole.error("Failed to persist PaymentIntent:", dbErr);
           }
           break;
         }
 
         default:
-          console.log(`Unhandled event type ${event.type}`);
+          paymentConsole.log(`Unhandled event type ${event.type}`);
       }
 
       return res.json({ received: true });
     } catch (err: any) {
-      console.error("Error handling webhook event:", err);
+      paymentConsole.error("Error handling webhook event:", err);
       return res.status(500).send("Webhook handler error");
     }
   }
