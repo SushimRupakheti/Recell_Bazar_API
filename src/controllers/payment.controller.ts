@@ -37,24 +37,28 @@ const stripe = new Stripe(stripeSecret || "sk_undefined", {} as Stripe.StripeCon
 
 export class PaymentController {
   async createStripeCheckout(req: Request, res: Response) {
-    // Early guard: return a clear error if secret key is missing/invalid
     if (!stripeSecret || !stripeSecret.startsWith("sk_")) {
-    paymentConsole.error("Stripe secret key missing or invalid on createStripeCheckout.");
+      paymentConsole.error("Stripe secret key missing or invalid on createStripeCheckout.");
       return res.status(500).json({
         error: "Server misconfigured: STRIPE_SECRET_KEY must be set to Stripe secret key (sk_...).",
       });
     }
 
     try {
+      // Diagnostic log of incoming payload
+      paymentConsole.log("Incoming /stripe/checkout body:", req.body);
+
+      // Resolve email from several possible incoming keys
+      const buyerEmailRaw = req.body.buyerEmail ?? req.body.customerEmail ?? req.body.email ?? "";
+      const buyerEmail = (buyerEmailRaw || "").toString().trim() || undefined;
+
       const {
         amount,
         productName,
         productId,
         buyerName,
-        buyerEmail,
         buyerPhone,
         orderId,
-        // additional fields for payment record
         fullName,
         phoneNo,
         phoneModel,
@@ -66,7 +70,7 @@ export class PaymentController {
         oid,
         refId,
         metadata = {},
-        flow, // new field: 'payment_intent' or 'checkout' (default)
+        flow,
       } = req.body;
 
       const origin =
@@ -74,22 +78,25 @@ export class PaymentController {
         process.env.NEXT_PUBLIC_APP_ORIGIN ||
         "http://localhost:3000";
 
-      // Validate amount (expecting amount in major units as you currently send)
       const amountNum = Number(amount || price || 0);
       if (!amountNum || amountNum <= 0) {
         return res.status(400).json({ error: "Invalid amount" });
       }
-
-      // Convert major units to smallest currency unit for Stripe (e.g., dollars -> cents)
-      // Adjust this logic if your frontend already sends cents.
       const amountForStripe = Math.round(amountNum * 100);
 
-      // If client asked for PaymentIntent (in-app PaymentSheet)
+      // Ensure metadata.email is present for downstream webhook logic
+      const mergedMetadata = {
+        ...(metadata || {}),
+        email: (metadata && (metadata.email || metadata.CustomerEmail)) || buyerEmail || "",
+      };
+
       if (flow === "payment_intent") {
+        paymentConsole.log("Creating PaymentIntent with receipt_email:", buyerEmail, "metadata.email:", mergedMetadata.email);
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amountForStripe,
-          currency: "usd", // change to appropriate currency if needed
+          currency: "usd",
           automatic_payment_methods: { enabled: true },
+          receipt_email: buyerEmail,
           metadata: {
             orderId: orderId || "",
             productId: productId || "",
@@ -105,10 +112,12 @@ export class PaymentController {
             time: time || new Date().toLocaleTimeString(),
             oid: oid || orderId || "",
             refId: refId || orderId || "",
-            ...metadata,
+            email: mergedMetadata.email || "",
+            ...mergedMetadata,
           },
         });
 
+        paymentConsole.log("Created PaymentIntent:", { id: paymentIntent.id, receipt_email: paymentIntent.receipt_email });
         return res.status(200).json({
           clientSecret: paymentIntent.client_secret,
           publishableKey: stripePublishable,
@@ -117,7 +126,7 @@ export class PaymentController {
         });
       }
 
-      // Default: existing Checkout Session (web flow)
+      paymentConsole.log("Creating Checkout Session with customer_email:", buyerEmail, "metadata.email:", mergedMetadata.email);
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
@@ -135,9 +144,7 @@ export class PaymentController {
         ],
         mode: "payment",
         success_url: `${origin}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/stripe/cancel?order_id=${encodeURIComponent(
-          orderId || productId || ""
-        )}`,
+        cancel_url: `${origin}/stripe/cancel?order_id=${encodeURIComponent(orderId || productId || "")}`,
         customer_email: buyerEmail || undefined,
         metadata: {
           orderId: orderId || "",
@@ -154,16 +161,16 @@ export class PaymentController {
           time: time || new Date().toLocaleTimeString(),
           oid: oid || orderId || "",
           refId: refId || orderId || "",
-          ...metadata,
+          email: mergedMetadata.email || "",
+          ...mergedMetadata,
         },
       });
 
+      paymentConsole.log("Created Checkout Session:", { id: session.id, customer_email: session.customer_email });
       return res.status(200).json({ sessionId: session.id, url: session.url });
     } catch (error: any) {
       paymentConsole.error("Stripe checkout error:", error);
-      return res
-        .status(500)
-        .json({ error: error.message || "Failed to create checkout session" });
+      return res.status(500).json({ error: error.message || "Failed to create checkout session" });
     }
   }
 
