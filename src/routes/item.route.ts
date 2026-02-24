@@ -80,6 +80,11 @@ router.put("/:id", authorizedMiddleWare, (req, res) =>
   itemController.updateItem(req, res)
 );
 
+// Delete item (Protected, owner-only enforced in controller/service)
+router.delete("/:id", authorizedMiddleWare, (req, res) =>
+  itemController.deleteItem(req, res)
+);
+
 router.get("/:id", (req, res) => itemController.getItemById(req, res));
 
 export default router;

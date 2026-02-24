@@ -98,4 +98,22 @@ export class ItemController {
       });
     }
   }
+
+  async deleteItem(req: Request, res: Response) {
+    try {
+      if (!req.user) throw new HttpError(401, "Unauthorized, User Not Found");
+
+      const itemId = req.params.id;
+      const userId = req.user._id.toString();
+
+      await this.itemService.deleteItem(itemId, userId);
+
+      return res.status(200).json({ success: true, message: "Item deleted successfully" });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({
+        success: false,
+        message: err.message || "Failed to delete item",
+      });
+    }
+  }
 }

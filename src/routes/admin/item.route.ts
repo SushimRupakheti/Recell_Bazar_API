@@ -26,6 +26,13 @@ router.put(
   (req, res) => adminItemController.updateItem(req, res)
 );
 
+router.put(
+  "/:itemid/status",
+  authorizedMiddleWare,
+  adminMiddleware,
+  (req, res) => adminItemController.updateStatus(req, res)
+);
+
 router.delete(
   "/:itemid",
   authorizedMiddleWare,

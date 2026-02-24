@@ -92,4 +92,38 @@ export class AdminItemController {
       return res.status(500).json({ success: false, message: err.message || "Error deleting item" });
     }
   }
+
+  async updateStatus(req: Request, res: Response) {
+    try {
+      const { itemid } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(itemid)) {
+        return res.status(400).json({ success: false, message: "Invalid item id" });
+      }
+
+      const { status } = req.body as { status?: string };
+      const allowed = ["pending", "approved", "rejected"];
+
+      if (!status || !allowed.includes(status)) {
+        return res.status(400).json({ success: false, message: "Invalid status. Allowed: pending, approved, rejected" });
+      }
+
+      const update: any = { status };
+      if (status === "approved") {
+        update.approvedBy = (req.user as any)?._id || null;
+        update.approvedAt = new Date();
+      } else {
+        update.approvedBy = null;
+        update.approvedAt = null;
+      }
+
+      const updated = await ItemModel.findByIdAndUpdate(itemid, update as any, { new: true });
+
+      if (!updated) return res.status(404).json({ success: false, message: "Item not found" });
+
+      return res.status(200).json({ success: true, message: "Item status updated", item: updated });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Error updating status" });
+    }
+  }
 }
