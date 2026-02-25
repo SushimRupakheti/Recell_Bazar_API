@@ -269,11 +269,14 @@ export class PaymentController {
               if (productId) {
                 try {
                   const item = await ItemModel.findById(productId).lean();
-                  if (item) {
+                    if (item) {
                     itemSnapshot = item;
-                    // mark item as sold
+                    // mark item as sold (isSold flag + status)
                     try {
-                      await ItemModel.updateOne({ _id: productId }, { $set: { isSold: true } });
+                      await ItemModel.updateOne(
+                        { _id: productId },
+                        { $set: { isSold: true, status: "sold" } }
+                      );
                     } catch (markErr: any) {
                       paymentConsole.error("Failed to mark item as sold:", markErr);
                     }
@@ -363,9 +366,12 @@ export class PaymentController {
                   const item = await ItemModel.findById(productId).lean();
                   if (item) {
                     itemSnapshot = item;
-                    // mark item as sold
+                    // mark item as sold (isSold flag + status)
                     try {
-                      await ItemModel.updateOne({ _id: productId }, { $set: { isSold: true } });
+                      await ItemModel.updateOne(
+                        { _id: productId },
+                        { $set: { isSold: true, status: "sold" } }
+                      );
                     } catch (markErr: any) {
                       paymentConsole.error("Failed to mark item as sold:", markErr);
                     }
