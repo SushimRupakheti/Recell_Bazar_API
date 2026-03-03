@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import { StripePaymentModel } from "../models/stripePayment.model";
 import { PaymentModel } from "../models/payment.model";
 import { ItemModel } from "../models/item.model";
+import { NotificationService } from "../services/notification.service";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
 const stripePublishable =
@@ -277,6 +278,12 @@ export class PaymentController {
                         { _id: productId },
                         { $set: { isSold: true, status: "sold" } }
                       );
+                      // Notify seller that their item was sold
+                      const sellerId = (item as any).sellerId?.toString();
+                      const productName = (item as any).phoneModel || "your item";
+                      if (sellerId) {
+                        await NotificationService.notifyProductSold(sellerId, productId, productName);
+                      }
                     } catch (markErr: any) {
                       paymentConsole.error("Failed to mark item as sold:", markErr);
                     }
@@ -372,6 +379,12 @@ export class PaymentController {
                         { _id: productId },
                         { $set: { isSold: true, status: "sold" } }
                       );
+                      // Notify seller that their item was sold
+                      const sellerId = (item as any).sellerId?.toString();
+                      const productName = (item as any).phoneModel || "your item";
+                      if (sellerId) {
+                        await NotificationService.notifyProductSold(sellerId, productId, productName);
+                      }
                     } catch (markErr: any) {
                       paymentConsole.error("Failed to mark item as sold:", markErr);
                     }

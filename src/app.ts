@@ -11,6 +11,8 @@ import adminPaymentRoute from './routes/admin/payment.route';
 import itemRoutes from './routes/item.route';
 import paymentRoutes from './routes/payment.route';
 import cartRoutes from './routes/cart.route';
+import notificationRoutes from './routes/notification.route';
+import adminNotificationRoute from './routes/admin/notification.route';
 import paymentController from './controllers/payment.controller';
 
 import cors from "cors";
@@ -53,11 +55,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminUserRoute);
 app.use('/api/admin/items', adminItemRoute);
 app.use('/api/admin/payments', adminPaymentRoute);
+app.use('/api/admin/notifications', adminNotificationRoute);
 app.use("/uploads", express.static("uploads"));
 
 app.use("/api/items", itemRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 app.use("/uploads", express.static(path.join(__dirname, "../itemPhotoUploads")));

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ItemModel } from "../../models/item.model";
 import mongoose from "mongoose";
+import { NotificationService } from "../../services/notification.service";
 
 export class AdminItemController {
   async getAllItems(req: Request, res: Response) {
@@ -69,6 +70,19 @@ export class AdminItemController {
 
       if (!updated) return res.status(404).json({ success: false, message: "Item not found" });
 
+      // ── Auto-trigger notification if status was changed via generic update ──
+      const bodyStatus = (req.body as any)?.status;
+      if (bodyStatus && updated.sellerId) {
+        const sellerIdStr = updated.sellerId.toString();
+        const productName = (updated as any).phoneModel || "your item";
+
+        if (bodyStatus === "approved") {
+          await NotificationService.notifyProductApproved(sellerIdStr, itemid, productName);
+        } else if (bodyStatus === "rejected") {
+          await NotificationService.notifyProductRejected(sellerIdStr, itemid, productName);
+        }
+      }
+
       return res.status(200).json({ success: true, message: "Item updated successfully", item: updated });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || "Error updating item" });
@@ -120,6 +134,26 @@ export class AdminItemController {
       const updated = await ItemModel.findByIdAndUpdate(itemid, update as any, { new: true });
 
       if (!updated) return res.status(404).json({ success: false, message: "Item not found" });
+
+      // ── Auto-trigger notification to seller ──
+      if (updated.sellerId) {
+        const sellerIdStr = updated.sellerId.toString();
+        const productName = (updated as any).phoneModel || "your item";
+
+        if (status === "approved") {
+          await NotificationService.notifyProductApproved(
+            sellerIdStr,
+            itemid,
+            productName
+          );
+        } else if (status === "rejected") {
+          await NotificationService.notifyProductRejected(
+            sellerIdStr,
+            itemid,
+            productName
+          );
+        }
+      }
 
       return res.status(200).json({ success: true, message: "Item status updated", item: updated });
     } catch (err: any) {
