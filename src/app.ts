@@ -10,6 +10,7 @@ import adminItemRoute from './routes/admin/item.route';
 import adminPaymentRoute from './routes/admin/payment.route';
 import itemRoutes from './routes/item.route';
 import paymentRoutes from './routes/payment.route';
+import cartRoutes from './routes/cart.route';
 import paymentController from './controllers/payment.controller';
 
 import cors from "cors";
@@ -56,6 +57,7 @@ app.use("/uploads", express.static("uploads"));
 
 app.use("/api/items", itemRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/cart", cartRoutes);
 
 
 app.use("/uploads", express.static(path.join(__dirname, "../itemPhotoUploads")));
