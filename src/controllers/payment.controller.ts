@@ -83,6 +83,18 @@ export class PaymentController {
       if (!amountNum || amountNum <= 0) {
         return res.status(400).json({ error: "Invalid amount" });
       }
+
+      // Prevent seller from buying their own item
+      if (productId) {
+        const product = await ItemModel.findById(productId);
+        if (product) {
+          const buyerId = (req as any).user?._id?.toString() || (req as any).user?.id;
+          if (buyerId && product.sellerId.toString() === buyerId) {
+            return res.status(400).json({ error: "You cannot buy your own item." });
+          }
+        }
+      }
+
       const amountForStripe = Math.round(amountNum * 100);
 
       // Ensure metadata.email is present for downstream webhook logic

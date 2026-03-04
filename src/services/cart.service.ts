@@ -21,6 +21,11 @@ export class CartService {
       throw new HttpError(404, "Product not found");
     }
 
+    // 1.5 Prevent seller from buying their own item
+    if (product.sellerId.toString() === userId) {
+      throw new HttpError(400, "You cannot buy your own item.");
+    }
+
     // 2. Find or create cart for user
     const cart = await cartRepository.findOrCreateCart(userId);
 
