@@ -11,12 +11,7 @@ router.post('/logout', authController.logoutUser);
 router.put('/update/:id',authController.updateUser);
 router.get('/:id', authController.getUserById);
 // router.post("/:id/profile-picture", authController.uploadProfilePicture);
-router.post(
-  "/:id/profile-picture",
-  upload.single("profileImage"), // ← Multer middleware
-  authController.uploadProfilePicture
-);
-
+router.post("/:id/profile-picture",upload.single("profileImage"),authController.uploadProfilePicture);
 router.post("/request-password-reset", authController.sendResetPasswordEmail);
 router.post("/reset-password/:token", authController.resetPassword);
 
