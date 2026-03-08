@@ -1,15 +1,29 @@
 /** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
-module.exports = {
+const base = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
   transformIgnorePatterns: ['/node_modules/'],
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setupTests.ts'],
-  testPathIgnorePatterns: ['<rootDir>/src/__tests__/setupTests.ts'],
   clearMocks: true,
+};
+
+module.exports = {
+  projects: [
+    {
+      ...base,
+      displayName: 'unit',
+      testMatch: ['**/__tests__/unit/**/*.test.ts'],
+    },
+    {
+      ...base,
+      displayName: 'integration',
+      testMatch: ['**/__tests__/integration/**/*.test.ts'],
+      setupFilesAfterEnv: ['<rootDir>/src/__tests__/setupTests.ts'],
+      testPathIgnorePatterns: ['<rootDir>/src/__tests__/setupTests.ts'],
+    },
+  ],
 };

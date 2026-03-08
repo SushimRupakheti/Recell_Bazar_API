@@ -58,7 +58,6 @@ describe("Normal user dashboard integration tests", () => {
     // cleanup any leftovers
     await UserModel.deleteOne({ email: userA.email });
     await UserModel.deleteOne({ email: userB.email });
-    await ItemModel.deleteMany({});
 
     // create users directly (hash passwords) then login to obtain tokens
     const aHash = await bycryptjs.hash(userA.password, 10);
@@ -81,7 +80,9 @@ describe("Normal user dashboard integration tests", () => {
   });
 
   afterAll(async () => {
-    await ItemModel.deleteMany({});
+    if (itemId) {
+      await ItemModel.deleteOne({ _id: itemId as any });
+    }
     await UserModel.deleteOne({ email: userA.email });
     await UserModel.deleteOne({ email: userB.email });
   });

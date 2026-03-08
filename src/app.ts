@@ -66,5 +66,7 @@ app.use("/api/notifications", notificationRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "../itemPhotoUploads")));
 
-
+app.get('/api/test', (req, res) => {
+  res.status(200).json({ message: 'API working' });
+});
 export default app;
