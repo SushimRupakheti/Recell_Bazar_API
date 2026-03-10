@@ -18,3 +18,6 @@ process.env.MONGO_URI || 'mongodb+srv://sushimrupakheti120_db_user:H1XKG2TbSGBe0
 //application lelevel constants
 
 export const JWT_SECRET: string = process.env.JWT_SECRET || 'defaultsecret';
+// Stripe configuration
+export const STRIPE_SECRET_KEY: string = process.env.STRIPE_SECRET_KEY || '';
+export const STRIPE_WEBHOOK_SECRET: string = process.env.STRIPE_WEBHOOK_SECRET || '';

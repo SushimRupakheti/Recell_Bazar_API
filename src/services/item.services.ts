@@ -6,6 +6,7 @@ export class ItemService {
   async createItem(sellerId: string, data: CreateItemDTO) {
     const item = await ItemModel.create({
       sellerId,
+      status: "pending",
       ...data,
     } as any);
 
@@ -43,5 +44,18 @@ export class ItemService {
     });
 
     return updated;
+  }
+
+  async deleteItem(itemId: string, userId: string) {
+    const item = await ItemModel.findById(itemId);
+    if (!item) throw new HttpError(404, "Item not found");
+
+    if (item.sellerId.toString() !== userId)
+      throw new HttpError(403, "Forbidden: not the owner of the item");
+
+    const deleted = await ItemModel.findByIdAndDelete(itemId);
+    if (!deleted) throw new HttpError(500, "Failed to delete item");
+
+    return deleted;
   }
 }

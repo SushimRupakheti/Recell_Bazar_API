@@ -53,6 +53,10 @@ async LoginUser(data:LoginUserDto){
 } 
 
 async updateUser(userId:string, data:Partial<createUserDto>){
+    // Hash password if it's being updated
+    if(data.password){
+        data.password = await bycryptjs.hash(data.password, 10);
+    }
     const updatedUser = await userRepository.updateUserById(userId,data);   
     if(!updatedUser){
         throw new HttpError(404,"User not found");

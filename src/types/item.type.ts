@@ -28,4 +28,5 @@ export type ItemType = {
   displayOriginal: boolean;
 
   isSold?: boolean;
+  status?: "pending" | "approved" | "rejected";
 };
